@@ -27,19 +27,19 @@ import { parse } from "cookie";
 // - Request for different IP: Cache MISS → 1 KV operation
 //
 // TTL RECOMMENDATIONS FOR DDOS PROTECTION:
-// - IP_ADDRESS: 300s (5 min) - IPs change frequently during attacks
-// - IP_RANGES: 3600s (1 hour) - IP ranges are relatively stable
-// - ASN: 1800s (30 min) - ASN data changes occasionally
-// - COUNTRY: 3600s (1 hour) - Country data is very stable
+// - IP_ADDRESS: 3600s (1 hour) - IPs change frequently during attacks
+// - IP_RANGES: 7200s (2 hours) - IP ranges are relatively stable
+// - ASN: 7200s (2 hours) - ASN data changes occasionally
+// - COUNTRY: 7200s (2 hours) - Country data is very stable
 // - BAN_TEMPLATE: 86400s (24 hours) - Template rarely changes
 // - TURNSTILE_CONFIG: 1800s (30 min) - Config changes occasionally
 const CACHE_API_TTL = {
-  IP_ADDRESS: 300,        // 5 minutes - IP addresses change frequently
-  IP_RANGES: 3600,        // 1 hour - IP ranges change less frequently
-  ASN: 1800,              // 30 minutes - ASN data is relatively stable
-  COUNTRY: 3600,          // 1 hour - Country data is very stable
+  IP_ADDRESS: 3600,        // 1 hour - IP addresses change frequently
+  IP_RANGES: 7200,        // 2 hours - IP ranges change less frequently
+  ASN: 7200,              // 2 hours - ASN data is relatively stable
+  COUNTRY: 7200,          // 2 hours - Country data is very stable
   BAN_TEMPLATE: 86400,    // 24 hours - Ban template rarely changes
-  TURNSTILE_CONFIG: 1800  // 30 minutes - Turnstile config changes occasionally
+  TURNSTILE_CONFIG: 86400  // 24 hours - Turnstile config changes occasionally
 };
 
 
