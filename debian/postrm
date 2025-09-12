@@ -2,7 +2,7 @@
 
 set -eu
 
-BOUNCER="crowdsec-cloudflare-worker-bouncer"
+BOUNCER="cs-cf-worker-bouncer"
 CONFIG="/etc/crowdsec/bouncers/$BOUNCER.yaml"
 
 if [ "$1" = "purge" ]; then

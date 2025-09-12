@@ -3,7 +3,7 @@
 
 set -eu
 
-BOUNCER="crowdsec-cloudflare-worker-bouncer"
+BOUNCER="cs-cf-worker-bouncer"
 BOUNCER_PREFIX=$(echo "$BOUNCER" | sed 's/crowdsec-/cs-/g')
 
 # This is a library of functions that can be sourced by other scripts

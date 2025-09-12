@@ -1,4 +1,4 @@
-crowdsec-cloudflare-worker-bouncer (1.0.0) UNRELEASED; urgency=medium
+cs-cf-worker-bouncer (1.0.0) UNRELEASED; urgency=medium
 
   * Initial debian packaging
 

@@ -5,7 +5,7 @@ GO = go
 GOBUILD = $(GO) build
 GOTEST = $(GO) test
 
-BINARY_NAME=crowdsec-cloudflare-worker-bouncer
+BINARY_NAME=cs-cf-worker-bouncer
 TARBALL_NAME=$(BINARY_NAME).tgz
 
 # Versioning information can be overridden in the environment
