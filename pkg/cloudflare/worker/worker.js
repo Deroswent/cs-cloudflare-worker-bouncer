@@ -23,19 +23,34 @@ import { parse } from "cookie";
 //
 // USAGE EXAMPLE:
 // - First request for IP 192.168.1.1: Cache MISS → 2 KV operations (IP + IP_RANGES)
-// - Second request for IP 192.168.1.1: Cache HIT → 0 KV operations (IP_RANGES cached)
+// - Second request for IP 192.168.1.1: Cache HIT → 0 KV operations (both cached)
 // - Request for different IP: Cache MISS → 1 KV operation (IP_RANGES still cached)
+// - Non-blocked IP: Negative cached for 16s → 0 KV operations for 16 seconds
 //
 // TTL RECOMMENDATIONS FOR DDOS PROTECTION:
 // - IP_ADDRESS: 3600s (1 hour) - IPs change frequently during attacks
 // - IP_RANGES: 7200s (2 hours) - IP ranges are relatively stable
 // - BAN_TEMPLATE: 86400s (24 hours) - Template rarely changes
 // - TURNSTILE_CONFIG: 86400s (24 hours) - Config changes occasionally
+//
+// NEGATIVE CACHING TTL (for null/empty results):
+// - IP_ADDRESS: 16s - Short TTL for non-blocked individual IPs
+// - IP_RANGES: не нужен - всегда кешируется под одним глобальным ключом
+// - BAN_TEMPLATE: не нужен - всегда кешируется под одним глобальным ключом
+// - TURNSTILE_CONFIG: не нужен - всегда кешируется под одним глобальным ключом
 const CACHE_API_TTL = {
   IP_ADDRESS: 3600,        // 1 hour - IP addresses change frequently
   IP_RANGES: 7200,        // 2 hours - IP ranges change less frequently
   BAN_TEMPLATE: 86400,    // 24 hours - Ban template rarely changes
   TURNSTILE_CONFIG: 86400  // 24 hours - Turnstile config changes occasionally
+};
+
+// TTL for caching empty/null results (negative caching)
+const NEGATIVE_CACHE_TTL = {
+  IP_ADDRESS: 16,         // 16 seconds - Short TTL for non-blocked IPs
+  // IP_RANGES: не нужен - всегда кешируется под одним ключом
+  // BAN_TEMPLATE: не нужен - всегда кешируется под одним ключом
+  // TURNSTILE_CONFIG: не нужен - всегда кешируется под одним ключом
 };
 
 
@@ -131,20 +146,31 @@ const getFromKVWithCacheAPI = async (kv, key, cacheType) => {
   // Get from KV (only KV operation)
   const value = await getFromKV(kv, key);
   
-  // Cache the result if we have a valid value
-  if (value !== null && CACHE_API_TTL[cacheType]) {
+  // Cache the result (both valid values and null/empty results)
+  if (CACHE_API_TTL[cacheType] || NEGATIVE_CACHE_TTL[cacheType]) {
     try {
-      const response = new Response(JSON.stringify({ 
-        value, 
-        timestamp: Date.now() 
-      }), {
-        headers: { 
-          'Content-Type': 'application/json',
-          'Cache-Control': `public, max-age=${CACHE_API_TTL[cacheType]}`
+      // Choose TTL based on whether value is null or not
+      const ttl = value !== null ? CACHE_API_TTL[cacheType] : NEGATIVE_CACHE_TTL[cacheType];
+      
+      if (ttl) {
+        const response = new Response(JSON.stringify({ 
+          value, 
+          timestamp: Date.now(),
+          isNegative: value === null
+        }), {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Cache-Control': `public, max-age=${ttl}`
+          }
+        });
+        await cache.put(cacheKey, response);
+        
+        if (value !== null) {
+          console.log(`Cached ${cacheType}: ${key} with TTL ${ttl}s`);
+        } else {
+          console.log(`Negative cached ${cacheType}: ${key} with TTL ${ttl}s`);
         }
-      });
-      await cache.put(cacheKey, response);
-      console.log(`Cached ${cacheType}: ${key} with TTL ${CACHE_API_TTL[cacheType]}s`);
+      }
     } catch (error) {
       console.log(`Cache API put error for ${cacheType}: ${key}:`, error);
     }
