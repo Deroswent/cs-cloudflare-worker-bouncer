@@ -16,28 +16,24 @@ import { parse } from "cookie";
 // - No KV operation limits - completely free to use
 //
 // PERFORMANCE IMPACT:
-// - Reduces KV reads from ~5-6 per request to ~0-1 per request
+// - Reduces KV reads from ~3-4 per request to ~0-1 per request
 // - Significant latency reduction (cache hits in ~1-5ms)
 // - Inter-request caching (data persists between different requests)
 // - No memory usage limits in your worker code
 //
 // USAGE EXAMPLE:
-// - First request for IP 192.168.1.1: Cache MISS → 1 KV operation
-// - Second request for IP 192.168.1.1: Cache HIT → 0 KV operations
-// - Request for different IP: Cache MISS → 1 KV operation
+// - First request for IP 192.168.1.1: Cache MISS → 2 KV operations (IP + IP_RANGES)
+// - Second request for IP 192.168.1.1: Cache HIT → 0 KV operations (IP_RANGES cached)
+// - Request for different IP: Cache MISS → 1 KV operation (IP_RANGES still cached)
 //
 // TTL RECOMMENDATIONS FOR DDOS PROTECTION:
 // - IP_ADDRESS: 3600s (1 hour) - IPs change frequently during attacks
 // - IP_RANGES: 7200s (2 hours) - IP ranges are relatively stable
-// - ASN: 7200s (2 hours) - ASN data changes occasionally
-// - COUNTRY: 7200s (2 hours) - Country data is very stable
 // - BAN_TEMPLATE: 86400s (24 hours) - Template rarely changes
-// - TURNSTILE_CONFIG: 1800s (30 min) - Config changes occasionally
+// - TURNSTILE_CONFIG: 86400s (24 hours) - Config changes occasionally
 const CACHE_API_TTL = {
   IP_ADDRESS: 3600,        // 1 hour - IP addresses change frequently
   IP_RANGES: 7200,        // 2 hours - IP ranges change less frequently
-  ASN: 7200,              // 2 hours - ASN data is relatively stable
-  COUNTRY: 7200,          // 2 hours - Country data is very stable
   BAN_TEMPLATE: 86400,    // 24 hours - Ban template rarely changes
   TURNSTILE_CONFIG: 86400  // 24 hours - Turnstile config changes occasionally
 };
@@ -166,13 +162,6 @@ const getIPRangesFromKVWithCacheAPI = async (kv) => {
   return await getFromKVWithCacheAPI(kv, 'IP_RANGES', 'IP_RANGES');
 };
 
-const getASNFromKVWithCacheAPI = async (kv, asn) => {
-  return await getFromKVWithCacheAPI(kv, asn, 'ASN');
-};
-
-const getCountryFromKVWithCacheAPI = async (kv, country) => {
-  return await getFromKVWithCacheAPI(kv, country, 'COUNTRY');
-};
 
 const getBanTemplateFromKVWithCacheAPI = async (kv) => {
   return await getFromKVWithCacheAPI(kv, 'BAN_TEMPLATE', 'BAN_TEMPLATE');
@@ -345,21 +334,6 @@ export default {
             // This happens when trying to match IPv6 address with IPv4 CIDR (or vice versa)
             // Just ignore the error and continue
           }
-        }
-      }
-      // Check for decision against the AS
-      const clientASN = request.cf.asn.toString();
-      value = await getASNFromKVWithCacheAPI(env.CROWDSECCFBOUNCERNS, clientASN);
-      if (value !== null) {
-        return value
-      }
-
-      // Check for decision against the country of the request
-      const clientCountry = request.cf.country.toLowerCase();
-      if (clientCountry !== null) {
-        value = await getCountryFromKVWithCacheAPI(env.CROWDSECCFBOUNCERNS, clientCountry);
-        if (value !== null) {
-          return value
         }
       }
       return null
